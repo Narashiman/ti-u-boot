@@ -41,7 +41,7 @@
 
 		port {
 			hdmi_connector_in: endpoint {
-				remote-endpoint = <&sii9022_out>;
+				remote-endpoint = <&adv7535b_out>;
 			};
 		};
 	};
@@ -103,9 +103,8 @@
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		regulator-boot-on;
-		enable-active-high;
+		regulator-always-on;
 		vin-supply = <&vcc_3v3_sys>;
-		gpio = <&exp1 3 GPIO_ACTIVE_HIGH>;
 	};
 
 	vcc_1v8: regulator-3 {
@@ -216,12 +215,6 @@
 		>;
 	};
 
-	main_gpio0_ioexp_intr_pins_default: main-gpio0-ioexp-intr-default-pins {
-		pinctrl-single,pins = <
-			AM62LX_IOPAD(0x01b0, PIN_INPUT, 7) /* (B12) SPI0_D1.GPIO0_91 */
-		>;
-		bootph-all;
-	};
 
 	usr_led_pins_default: usr-led-default-pins {
 		pinctrl-single,pins = <
@@ -438,62 +431,17 @@
 	clock-frequency = <100000>;
 	bootph-all;
 
-	exp1: gpio@22 {
-		compatible = "ti,tca6424";
-		reg = <0x22>;
-		gpio-controller;
-		#gpio-cells = <2>;
-		gpio-line-names = "", "",
-				   "UART1_FET_SEL", "MMC1_SD_EN",
-				   "VPP_EN", "EXP_PS_3V3_EN",
-				   "UART1_FET_BUF_EN", "",
-				   "DSI_GPIO0", "DSI_GPIO1",
-				   "", "BT_UART_WAKE_SOC_3V3",
-				   "USB_TYPEA_OC_INDICATION", "",
-				   "", "WLAN_ALERTn",
-				   "HDMI_INTn", "TEST_GPIO2",
-				   "MCASP0_FET_EN", "MCASP0_BUF_BT_EN",
-				   "MCASP0_FET_SEL", "DSI_EDID",
-				   "PD_I2C_IRQ", "IO_EXP_TEST_LED";
-
-		interrupt-parent = <&main_gpio0>;
-		interrupts = <91 IRQ_TYPE_EDGE_FALLING>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&main_gpio0_ioexp_intr_pins_default>;
-		bootph-all;
-	};
-
-	exp2: gpio@23 {
-		compatible = "ti,tca6424";
-		reg = <0x23>;
-		gpio-controller;
-		#gpio-cells = <2>;
-		gpio-line-names = "BT_EN_SOC", "VOUT0_FET_SEL0",
-				   "", "",
-				   "", "",
-				   "", "",
-				   "WL_LT_EN", "EXP_PS_5V0_EN",
-				   "TP45", "TP48",
-				   "TP46", "TP49",
-				   "TP47", "TP50",
-				   "GPIO_QSPI_NAND_RSTn", "GPIO_HDMI_RSTn",
-				   "GPIO_CPSW1_RST", "GPIO_CPSW2_RST",
-				   "", "GPIO_AUD_RSTn",
-				   "GPIO_eMMC_RSTn", "SoC_WLAN_SDIO_RST";
-		bootph-all;
-	};
-
-	sii9022: bridge-hdmi@3b {
-		compatible = "sil,sii9022";
-		reg = <0x3b>;
-		interrupt-parent = <&exp1>;
-		interrupts = <16 IRQ_TYPE_EDGE_FALLING>;
+	adv7535b: hdmi@39 {
+		compatible = "adi,adv7535";
+		reg = <0x39>;
 		#sound-dai-cells = <0>;
-		sil,i2s-data-lanes = < 0 >;
-		bootph-all;
+		adi,dsi-lanes = <4>;
+		avdd-supply = <&vcc_1v8>;
+		dvdd-supply = <&vcc_1v8>;
+		pvdd-supply = <&vcc_1v8>;
+		a2vdd-supply = <&vcc_1v8>;
+		v3p3-supply = <&vcc_3v3_sys>;
+		v1p2-supply = <&vcc_1v8>;
 
 		ports {
 			#address-cells = <1>;
@@ -502,15 +450,15 @@
 			port@0 {
 				reg = <0>;
 
-				sii9022_in: endpoint {
-					remote-endpoint = <&dpi_out>;
+				adv7535b_in: endpoint {
+					remote-endpoint = <&dsi0_out>;
 				};
 			};
 
 			port@1 {
 				reg = <1>;
 
-				sii9022_out: endpoint {
+				adv7535b_out: endpoint {
 					remote-endpoint = <&hdmi_connector_in>;
 				};
 			};
@@ -780,12 +728,12 @@
 };
 
 &dss_ports {
-	/* VP1: DPI Output */
-	port@0 {
-		reg = <0>;
+	/* VP1: DSI Output */
+	port@1 {
+		reg = <1>;
 
-		dpi_out: endpoint {
-			remote-endpoint = <&sii9022_in>;
+		dss_vp1_out: endpoint {
+			remote-endpoint = <&dsi0_in>;
 		};
 	};
 };
@@ -798,6 +746,27 @@
 &dsi0 {
 	status = "okay";
 	bootph-all;
+	
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+
+			dsi0_in: endpoint {
+				remote-endpoint = <&dss_vp1_out>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+
+			dsi0_out: endpoint {
+				remote-endpoint = <&adv7535b_in>;
+			};
+		};
+	};
 };
 
 &main_mcan0 {
