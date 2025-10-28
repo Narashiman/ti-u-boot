@@ -42,7 +42,7 @@
 
 		port {
 			hdmi_connector_in: endpoint {
-				remote-endpoint = <&adv7535b_out>;
+				remote-endpoint = <&adv7535_out>;
 			};
 		};
 	};
@@ -764,7 +764,8 @@
 			reg = <1>;
 
 			dsi0_out: endpoint {
-				remote-endpoint = <&adv7535b_in>;
+				remote-endpoint = <&adv7535_in>;
+				attach-bridge;
 			};
 		};
 	};
