@@ -17,7 +17,7 @@
 
 / {
 	compatible = "ti,am62l3-evm", "ti,am62l3";
-	model = "Texas Instruments AM62L3 Evaluation Module";
+	model = "Beacon EmbeddedWorks AM62L3 SOM";
 
 	aliases {
 		mmc0 = &sdhci0;
@@ -34,6 +34,7 @@
 		bootph-all;
 	};
 
+ //   bridge-connector {
 	hdmi0: connector-hdmi {
 		compatible = "hdmi-connector";
 		label = "hdmi";
@@ -431,11 +432,11 @@
 	clock-frequency = <100000>;
 	bootph-all;
 
-	adv7535b: hdmi@39 {
+	adv7535b: hdmi@3d {
 		compatible = "adi,adv7535";
-		reg = <0x39>;
-		#sound-dai-cells = <0>;
+		reg = <0x3d>;
 		adi,dsi-lanes = <4>;
+		#sound-dai-cells = <0>;
 		avdd-supply = <&vcc_1v8>;
 		dvdd-supply = <&vcc_1v8>;
 		pvdd-supply = <&vcc_1v8>;
