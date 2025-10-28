@@ -435,6 +435,7 @@
 	adv7535: hdmi@3d {
 		compatible = "adi,adv7535";
 		reg = <0x3d>;
+		reg-names = "main";
 		adi,dsi-lanes = <4>;
 		#sound-dai-cells = <0>;
 		avdd-supply = <&vcc_1v8>;
@@ -765,6 +766,7 @@
 
 			dsi0_out: endpoint {
 				remote-endpoint = <&adv7535_in>;
+				attach-bridge;
 			};
 		};
 	};
