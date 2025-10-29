@@ -438,7 +438,6 @@
 	//	reg = <0x3d>;
 		reg = <0x3d>, <0x3e>, <0x3c>, <0x3f>;
 	    reg-names = "main", "edid", "cec", "packet";
-		reg-names = "main";
 		adi,dsi-lanes = <4>;
 		#sound-dai-cells = <0>;
 		avdd-supply = <&vcc_1v8>;
