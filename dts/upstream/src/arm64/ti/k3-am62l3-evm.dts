@@ -469,7 +469,6 @@
 			};
 		};
 	};
-};
 
 	tlv320aic3106: audio-codec@1b {
 		#sound-dai-cells = <0>;
@@ -840,7 +839,7 @@
 		reg = <1>;
 		vdd-supply = <&vcc_3v3_sys>;
 	};
-};a
+};
 
 
 
