@@ -813,12 +813,6 @@
 
 &usb0 {
 	usb-role-switch;
-
-	port {
-		usb0_hs_ep: endpoint {
-			remote-endpoint = <&usb_con_hs>;
-		};
-	};
 };
 
 &usbss1 {
