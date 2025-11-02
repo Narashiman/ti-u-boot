@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only or MIT
 /*
- * Device Tree file for the AM62L3 Evaluation Module
+ * Device Tree file for the AM62L3 Evaluation Module - FINAL CORRECTED
  * Copyright (C) 2024 Texas Instruments Incorporated - https://www.ti.com/
  *
- * Technical Reference Manual: https://www.ti.com/lit/pdf/sprujb4
+ * CRITICAL FIX: Cadence DSI driver looks for OUTPUT/BRIDGE at port@0
+ * This is DIFFERENT from common DRM conventions!
  */
 
 /dts-v1/;
@@ -14,6 +15,8 @@
 #include <dt-bindings/net/ti-dp83867.h>
 #include "k3-am62l3.dtsi"
 #include "k3-pinctrl.h"
+#include <dt-bindings/interrupt-controller/irq.h>
+
 
 / {
 	compatible = "ti,am62l3-evm", "ti,am62l3";
@@ -22,6 +25,7 @@
 	aliases {
 		mmc0 = &sdhci0;
 		mmc1 = &sdhci1;
+		serial3 = &wkup_uart0;
 	};
 
 	chosen {
@@ -34,12 +38,16 @@
 		bootph-all;
 	};
 
- //   bridge-connector {
+    cec_clock: cec-clock {
+        compatible = "fixed-clock";
+        #clock-cells = <0>;
+        clock-frequency = <12000000>;
+    };
+
 	hdmi0: connector-hdmi {
 		compatible = "hdmi-connector";
 		label = "hdmi";
 		type = "a";
-
 		port {
 			hdmi_connector_in: endpoint {
 				remote-endpoint = <&adv7535_out>;
@@ -196,26 +204,6 @@
 			AM62LX_IOPAD(0x01e0, PIN_INPUT_PULLUP, 0) /* (D8) I2C2_SDA */
 		>;
 	};
-
-	ospi0_pins_default: ospi0-default-pins {
-		bootph-all;
-		pinctrl-single,pins = <
-			AM62LX_IOPAD(0x003c, PIN_OUTPUT, 0) /* (D22) OSPI0_CLK */
-			AM62LX_IOPAD(0x0068, PIN_OUTPUT, 0) /* (C20) OSPI0_CSn0 */
-			AM62LX_IOPAD(0x0074, PIN_OUTPUT, 0) /* (C23) OSPI0_CSn3 */
-			AM62LX_IOPAD(0x0048, PIN_INPUT, 0) /* (C22) OSPI0_D0 */
-			AM62LX_IOPAD(0x004c, PIN_INPUT, 0) /* (D21) OSPI0_D1 */
-			AM62LX_IOPAD(0x0050, PIN_INPUT, 0) /* (E23) OSPI0_D2 */
-			AM62LX_IOPAD(0x0054, PIN_INPUT, 0) /* (D23) OSPI0_D3 */
-			AM62LX_IOPAD(0x0058, PIN_INPUT, 0) /* (F21) OSPI0_D4 */
-			AM62LX_IOPAD(0x005c, PIN_INPUT, 0) /* (F19) OSPI0_D5 */
-			AM62LX_IOPAD(0x0060, PIN_INPUT, 0) /* (G20) OSPI0_D6 */
-			AM62LX_IOPAD(0x0064, PIN_INPUT, 0) /* (F20) OSPI0_D7 */
-			AM62LX_IOPAD(0x0044, PIN_INPUT, 0) /* (E22) OSPI0_DQS */
-			AM62LX_IOPAD(0x0040, PIN_INPUT, 0) /* (E18) OSPI0_LBCLKO */
-		>;
-	};
-
 
 	usr_led_pins_default: usr-led-default-pins {
 		pinctrl-single,pins = <
@@ -395,6 +383,13 @@
 			AM62LX_IOPAD(0x0014, PIN_INPUT_PULLUP, 0) /* (AA22) WKUP_I2C0_SDA */
 		>;
 	};
+
+	wkup_uart0_pins_default: wkup-uart0-default-pins {
+		pinctrl-single,pins = <
+			AM62LX_IOPAD(0x0024, PIN_INPUT, 0)  /* (Y22) WKUP_UART0_RXD */
+			AM62LX_IOPAD(0x0028, PIN_OUTPUT, 0) /* (AA23) WKUP_UART0_TXD */
+		>;
+	};
 };
 
 &main_uart0 {
@@ -425,32 +420,37 @@
 	};
 };
 
+
 &main_i2c1 {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&main_i2c1_pins_default>;
+    #address-cells = <1>;
+    #size-cells = <0>;
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&main_i2c1_pins_default>;
 	clock-frequency = <100000>;
-	bootph-all;
+
 
 	adv7535: hdmi@3d {
 		compatible = "adi,adv7535";
-		status = "ok";
-	//	reg = <0x3d>;
-		reg = <0x3d>, <0x3e>, <0x3c>, <0x3f>;
-	    reg-names = "main", "edid", "cec", "packet";
+		reg = <0x3d>;
+		reg-names = "main";
 		adi,dsi-lanes = <4>;
 		#sound-dai-cells = <0>;
+		clocks = <&cec_clock>;
+		clock-names = "cec";
 		avdd-supply = <&vcc_1v8>;
 		dvdd-supply = <&vcc_1v8>;
 		pvdd-supply = <&vcc_1v8>;
 		a2vdd-supply = <&vcc_1v8>;
 		v3p3-supply = <&vcc_3v3_sys>;
 		v1p2-supply = <&vcc_1v8>;
+		status = "okay";
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
+			/* INPUT PORT - Receives DSI from controller */
 			port@0 {
 				reg = <0>;
 
@@ -459,6 +459,7 @@
 				};
 			};
 
+			/* OUTPUT PORT - Sends HDMI to connector */
 			port@1 {
 				reg = <1>;
 
@@ -468,6 +469,7 @@
 			};
 		};
 	};
+};
 
 	tlv320aic3106: audio-codec@1b {
 		#sound-dai-cells = <0>;
@@ -488,24 +490,6 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_i2c2_pins_default>;
 	clock-frequency = <400000>;
-
-	typec_pd0: tps6598x@3f {
-		compatible = "ti,tps6598x";
-		reg = <0x3f>;
-
-		connector {
-			compatible = "usb-c-connector";
-			label = "USB-C";
-			self-powered;
-			data-role = "dual";
-			power-role = "sink";
-			port {
-				usb_con_hs: endpoint {
-					remote-endpoint = <&usb0_hs_ep>;
-				};
-			};
-		};
-	};
 };
 
 &wkup_i2c0 {
@@ -601,189 +585,88 @@
 	disable-wp;
 };
 
-&ospi0 {
-	bootph-all;
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&ospi0_pins_default>;
-
-	ospi0_nor: flash@0 {
-		bootph-all;
-		compatible = "jedec,spi-nor";
-		reg = <0x0>;
-		spi-tx-bus-width = <8>;
-		spi-rx-bus-width = <8>;
-		spi-max-frequency = <25000000>;
-		cdns,tshsl-ns = <60>;
-		cdns,tsd2d-ns = <60>;
-		cdns,tchsh-ns = <60>;
-		cdns,tslch-ns = <60>;
-		cdns,read-delay = <4>;
-		cdns,phy-mode;
-
-		partitions {
-			bootph-all;
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			partition@0 {
-				label = "ospi.tiboot3";
-				reg = <0x0 0x80000>;
-			};
-
-			partition@80000 {
-				label = "ospi.tispl";
-				reg = <0x80000 0x200000>;
-			};
-
-			partition@280000 {
-				label = "ospi.u-boot";
-				reg = <0x280000 0x400000>;
-			};
-
-			partition@680000 {
-				label = "ospi.env";
-				reg = <0x680000 0x40000>;
-			};
-
-			partition@6c0000 {
-				label = "ospi.env.backup";
-				reg = <0x6c0000 0x40000>;
-			};
-
-			partition@800000 {
-				label = "ospi.rootfs";
-				reg = <0x800000 0x37c0000>;
-			};
-
-			partition@3fc0000 {
-				bootph-all;
-				label = "ospi.phypattern";
-				reg = <0x3fc0000 0x40000>;
-			};
-		};
-	};
-
-	ospi0_nand: flash@3 {
-		bootph-all;
-		compatible = "spi-nand";
-		reg = <0x3>;
-		spi-tx-bus-width = <4>;
-		spi-rx-bus-width = <4>;
-		spi-max-frequency = <25000000>;
-		cdns,tshsl-ns = <60>;
-		cdns,tsd2d-ns = <60>;
-		cdns,tchsh-ns = <60>;
-		cdns,tslch-ns = <60>;
-		cdns,read-delay = <2>;
-		cdns,phy-mode;
-
-		partitions {
-			bootph-all;
-			compatible = "fixed-partitions";
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			partition@0 {
-				label = "ospi_nand.tiboot3";
-				reg = <0x0 0x80000>;
-			};
-
-			partition@80000 {
-				label = "ospi_nand.tispl";
-				reg = <0x80000 0x200000>;
-			};
-
-			partition@280000 {
-				label = "ospi_nand.u-boot";
-				reg = <0x280000 0x400000>;
-			};
-
-			partition@680000 {
-				label = "ospi_nand.env";
-				reg = <0x680000 0x40000>;
-			};
-
-			partition@6c0000 {
-				label = "ospi_nand.env.backup";
-				reg = <0x6c0000 0x40000>;
-			};
-
-			partition@2000000 {
-				label = "ospi_nand.rootfs";
-				reg = <0x2000000 0x5fe0000>;
-			};
-
-			partition@7fe0000 {
-				bootph-all;
-				label = "ospi_nand.phypattern";
-				reg = <0x7fe0000 0x20000>;
-			};
-		};
-	};
-};
 
 &dss {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&main_dpi_pins_default>;
-	bootph-all;
 };
 
+/*==============================================================================
+ * ⚠️ CRITICAL: Cadence DSI driver behavior
+ * 
+ * The Cadence DSI driver looks for OUTPUT/BRIDGE at DSI_OUTPUT_PORT (port@0)
+ * This is the EXCEPTION in DRM architecture!
+ *
+ * port@0 = DSI_OUTPUT_PORT = Remote is BRIDGE (ADV7535)
+ * port@1 = DSI_INPUT_PORT = Remote is DSS/Encoder (if multi-port support)
+ *
+ * In this AM62L case, only port@0 needs proper connection to ADV7535.
+ * DTS also needs &dss_ports to connect to this DSI via other means if needed.
+ *==============================================================================
+ */
 &dss_ports {
-	/* VP1: DSI Output */
-	port@1 {
-		reg = <1>;
+    #address-cells = <1>;
+    #size-cells = <0>;
 
-		dss_vp1_out: endpoint {
+    /* DSS Video Port 0 output - used on AM62L (DSS7-Nano) */
+    port@0 {
+        reg = <0>;
+
+        dss_vp0_out: endpoint {
 			remote-endpoint = <&dsi0_in>;
-		};
-	};
+
+        };
+    };
 };
 
 &dphy_tx0 {
 	status = "okay";
-	bootph-all;
 };
+
+/*==============================================================================
+ * DSI CONTROLLER - CORRECTED FOR CADENCE DRIVER
+ *
+ * CRITICAL: port@0 MUST have the bridge remote-endpoint
+ * The Cadence driver searches port@0 specifically for the bridge
+ *==============================================================================
+ */
 
 &dsi0 {
-	status = "okay";
-	bootph-all;
-	
-	ports {
-		#address-cells = <1>;
-		#size-cells = <0>;
+    #address-cells = <1>;
+    #size-cells = <0>;
+    status = "okay";
 
-		port@0 {
-			reg = <0>;
+    ports {
+        #address-cells = <1>;
+        #size-cells = <0>;
 
-			dsi0_in: endpoint {
-				remote-endpoint = <&dss_vp1_out>;
-			};
-		};
+        /* 
+         * port@0 = DSI_OUTPUT_PORT (Cadence requirement)
+         * This is where the Cadence DSI driver looks for the BRIDGE!
+         */
+        port@0 {
+            reg = <0>;
 
-		port@1 {
-			reg = <1>;
+            dsi0_out: endpoint {
+                /* Output to ADV7535 HDMI bridge - MUST be here for Cadence driver */
+                remote-endpoint = <&adv7535_in>;
+            };
+        };
 
-			dsi0_out: endpoint {
-				remote-endpoint = <&adv7535_in>;
-				attach-bridge;
-			};
-		};
-	};
-};
+        /* 
+         * port@1 = DSI_INPUT_PORT (for future/alternative configurations)
+         * In this AM62L setup with only one DSI port,
+         * this is informational for device-tree completeness
+         */
+        port@1 {
+            reg = <1>;
 
-&main_mcan0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&main_mcan0_pins_default>;
-	status = "okay";
-};
-
-&main_mcan2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&main_mcan2_pins_default>;
-	status = "okay";
+            dsi0_in: endpoint {
+                /* Conceptually from DSS, but not used in current Cadence driver */
+                remote-endpoint = <&dss_vp0_out>;
+            };
+        };
+    };
 };
 
 &tscadc0 {
@@ -927,7 +810,6 @@
 
 &usbss0 {
 	status = "okay";
-	ti,vbus-divider;
 };
 
 &usb0 {
@@ -942,13 +824,30 @@
 
 &usbss1 {
 	status = "okay";
-	ti,vbus-divider;
 };
 
 &usb1 {
 	dr_mode = "host";
 	pinctrl-names = "default";
 	pinctrl-0 = <&main_usb1_default_pins>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	/* USB8516 Hub */
+	hub@1 {
+		compatible = "usb424,2517";
+		reg = <1>;
+		vdd-supply = <&vcc_3v3_sys>;
+	};
+};a
+
+
+
+&wkup_uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&wkup_uart0_pins_default>;
+	status = "okay";
 };
 
 &mcasp0 {
